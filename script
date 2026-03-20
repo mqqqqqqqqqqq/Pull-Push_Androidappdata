@@ -1,0 +1,110 @@
+import subprocess
+import os
+import time
+from datetime import datetime
+
+
+def run_adb(adb_path, args):
+    """Executes ADB commands using the provided path."""
+    if not os.path.exists(adb_path):
+        return None, f"File not found: {adb_path}"
+    try:
+        result = subprocess.run([adb_path] + args, capture_output=True, text=True)
+        return result.stdout.strip(), result.stderr.strip()
+    except Exception as e:
+        return None, str(e)
+
+
+def pull_data(adb_path, base_pull_path, package):
+    """Pulls data using the 'Deep-Archive' TAR method."""
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    local_folder = os.path.join(base_pull_path, f"Backup_{package}_{timestamp}")
+
+    os.makedirs(local_folder, exist_ok=True)
+
+    remote_path = f"/sdcard/Android/data/{package}"
+    temp_tar = f"/sdcard/Download/{package}_temp.tar"
+
+    print(f"\n[*] Target: {package}")
+    print(f"[*] Saving to: {local_folder}")
+
+    # 1. Archive on phone
+    print("[*] Archiving on phone...")
+    tar_cmd = f"cd /sdcard/Android/data/ && tar -cvf {temp_tar} {package}"
+    _, err = run_adb(adb_path, ["shell", tar_cmd])
+
+    if err and "Permission denied" in err:
+        print(f"[!] PERMISSION DENIED: Android system is blocking access to {package}.")
+        print("[!] Tip: Manually move the folder to /sdcard/Download/ on your phone first.")
+        return
+
+    # 2. Pull the Archive
+    local_tar = os.path.join(local_folder, f"{package}.tar")
+    print("[*] Pulling archive to PC...")
+    run_adb(adb_path, ["pull", temp_tar, local_tar])
+
+    # 3. Verify and Cleanup
+    if os.path.exists(local_tar) and os.path.getsize(local_tar) > 1024:
+        print(f"[+] SUCCESS! File saved: {local_tar}")
+        run_adb(adb_path, ["shell", "rm", temp_tar])
+        os.startfile(local_folder)
+    else:
+        print("[!] PULL FAILED: Archive was empty. Data likely in /data/data/ (Root only).")
+        run_adb(adb_path, ["shell", "rm", temp_tar])
+
+
+def main():
+    # Detect the directory where THIS .py file is saved
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+
+    print("=" * 55)
+    print("      ADB FLEX-PATH MANAGER (LOCAL-DEFAULT EDITION)")
+    print("=" * 55)
+
+    # --- ADB PATH SETUP ---
+    # Default is script_folder\adb.exe
+    local_adb_default = os.path.join(script_dir, "adb.exe")
+
+    print(f"Current Directory: {script_dir}")
+    user_adb = input(f"Enter path to adb.exe (Press Enter for: {local_adb_default}): ").strip().strip('"')
+    adb_path = user_adb if user_adb else local_adb_default
+
+    # --- PULL PATH SETUP ---
+    user_pull_path = input(f"Enter pull destination (Press Enter for: {script_dir}): ").strip().strip('"')
+    base_pull_path = user_pull_path if user_pull_path else script_dir
+
+    # --- FINAL VERIFICATION ---
+    if not os.path.exists(adb_path):
+        print(f"\n[!] WARNING: adb.exe not found at {adb_path}")
+        print("[!] Please make sure adb.exe is in the same folder as this script.")
+    else:
+        print(f"\n[✔] Using ADB: {adb_path}")
+
+    print(f"[✔] Saving to: {base_pull_path}\n")
+
+    while True:
+        choice = input("[list / pull / exit]: ").strip().lower().split()
+        if not choice or choice[0] == "exit":
+            break
+
+        cmd = choice[0]
+        target = choice[1] if len(choice) > 1 else ""
+
+        if cmd == "list":
+            out, err = run_adb(adb_path, ["shell", "pm", "list", "packages", "-3"])
+            if out:
+                for line in out.splitlines():
+                    print(f" > {line.replace('package:', '')}")
+            else:
+                print(f"[!] Error: {err if err else 'No devices found.'}")
+
+        elif cmd == "pull" and target:
+            pull_data(adb_path, base_pull_path, target)
+
+
+if __name__ == "__main__":
+    try:
+        main()
+    except Exception as e:
+        print(f"\n[!!!] CRITICAL ERROR: {e}")
+        time.sleep(60)
