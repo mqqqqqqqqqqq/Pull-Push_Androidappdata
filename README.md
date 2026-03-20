@@ -7,6 +7,6 @@ A lightweight Python utility to backup and sync private app data from Android de
 * **Flexible Paths:** Prompt-based inputs allow you to save backups to any drive (e.g., `E:\adb\int`).
 
 ### 1. Prerequisites
-* **Python 3.x** installed on your Windows PC.
+* **Python 3.x** installed on your Windows PC (No Python installation required for the EXE version).
 * **ADB (Android Debug Bridge):** Download the SDK Platform-Tools and place `adb.exe` in the same folder as this script.
 * **USB Debugging:** Enabled on your Android device.
