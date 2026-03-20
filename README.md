@@ -1,6 +1,6 @@
 *** ADB.exe is not included. ***
 
-A lightweight Python utility to backup and sync private app data from Android devices to a PC.
+A lightweight Python utility to backup and sync private app data from Android devices to a PC (I'm using it to synchronize archives between my phone and computer.).
 
 ## ✨ Features
 * **Zero-Configuration Default:** Automatically looks for `adb.exe` in the same folder as the script.
